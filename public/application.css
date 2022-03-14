@@ -1,0 +1,13 @@
+#banner {
+  background-color: rgb(255, 255, 172);
+  padding: 10px;
+}
+
+body {
+  font-family: sans-serif;
+  padding: 1em;
+}
+
+form.inline {
+  display: inline;
+}
