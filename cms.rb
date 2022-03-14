@@ -6,7 +6,6 @@ require 'redcarpet'
 configure do
   enable :sessions
   set :session_secret, 'secret_session_id'
-  set :views         , File,expand_path()
 end
 
 def data_path
