@@ -1,7 +1,9 @@
-source "https://rubygems.org"
+# frozen_string_literal: true
 
-gem "sinatra"
-gem "sinatra-contrib"
-gem "erubis"
-gem "rack-test"
-gem "redcarpet"
+source 'https://rubygems.org'
+
+gem 'erubis'
+gem 'rack-test'
+gem 'redcarpet'
+gem 'sinatra'
+gem 'sinatra-contrib'

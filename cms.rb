@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'sinatra'
 require 'sinatra/reloader'
 require 'tilt/erubis'
@@ -9,10 +11,10 @@ configure do
 end
 
 def data_path
-  if ENV["RACK_ENV"] == "test"
-    File.expand_path("../test/data/", __FILE__)
+  if ENV['RACK_ENV'] == 'test'
+    File.expand_path('test/data', __dir__)
   else
-    File.expand_path("../data/", __FILE__)
+    File.expand_path('data', __dir__)
   end
 end
 
@@ -24,60 +26,61 @@ end
 def load_file_content(path)
   content = File.read(path)
   case File.extname(path)
-  when ".txt"
-    headers["Content-Type"] = "text/plain"
+  when '.txt'
+    headers['Content-Type'] = 'text/plain'
     content
-  when ".md"
+  when '.md'
     erb render_markdown(content)
   end
 end
 
 # index page lists all files
-get "/" do
-  pattern = File.join(data_path, "*")
-  @files = Dir.glob(pattern).map { |path| File.basename(path) }
+get '/' do
+  pattern = File.join(data_path, '*')
+  @files = Dir.glob(pattern)
+              .map { |path| File.basename(path) }
 
   erb :index
 end
 
 # Display form for adding a new file
-get "/new" do
+get '/new' do
   erb :new
 end
 
 # creates a new file
-post "/create" do
+post '/create' do
   filename = params[:filename].to_s
 
-  if filename.size == 0
-    session[:message] = "A name is required"
+  if filename.size.zero?
+    session[:message] = 'A name is required'
     status 422
     erb :new
   else
     file_path = File.join(data_path, filename)
 
-    File.write(file_path, "")
+    File.write(file_path, '')
 
     session[:message] = "#{params[:filename]} was created."
-    redirect "/"
+    redirect '/'
   end
 end
 
 # displays selected file
-get "/:filename" do
+get '/:filename' do
   file_path = File.join(data_path, params[:filename])
   @file_name = params[:filename]
 
-  if File.exist?(file_path) 
+  if File.exist?(file_path)
     load_file_content(file_path)
   else
     session[:message] = "#{@file_name} does not exist."
-    redirect "/"
+    redirect '/'
   end
 end
 
 # display the edit page for a file
-get "/:filename/edit" do 
+get '/:filename/edit' do
   file_path = File.join(data_path, params[:filename])
 
   @file_name = params[:filename]
@@ -87,23 +90,23 @@ get "/:filename/edit" do
 end
 
 # Update the selected file
-post "/:filename" do
+post '/:filename' do
   file_name = params[:filename]
   file_path = File.join(data_path, file_name)
 
   File.write(file_path, params[:content])
 
   session[:message] = "#{file_name} has been updated."
-  redirect "/"
+  redirect '/'
 end
 
 # Deletes a file
-post "/:filename/delete" do
-  file_name = params[:filename]
+post '/:filename/delete' do
+  file_name = params[:filename].to_s
   file_path = File.join(data_path, file_name)
 
   File.delete(file_name)
 
   session[:message] = "#{file_name} has been deleted."
-  redirect "/"
+  redirect '/'
 end
