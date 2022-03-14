@@ -7,12 +7,7 @@ configure do
   enable :sessions
   set :session_secret, 'secret_session_id'
   set :views         , File,expand_path()
-  # use Rack::Session::Cookie, :key => 'rack.session',
-  #                            :path => '/',
-  #                            :secret => 'secret session id'
 end
-
-# ROOT = File.expand_path("..", __FILE__) + "/data/"
 
 def data_path
   if ENV["RACK_ENV"] == "test"
