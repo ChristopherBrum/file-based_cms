@@ -1,5 +1,5 @@
 # frozen_string_literal: true
-
+require 'yaml'
 require 'sinatra'
 require 'sinatra/reloader'
 require 'tilt/erubis'
@@ -18,6 +18,15 @@ def data_path
   end
 end
 
+def load_users_credentials
+  credentials_path = if ENV["RACK_ENV"] == "test"
+    File.expand_path('../test/users.yml', __FILE__)
+  else
+    File.expand_path('../users.yml', __FILE__)
+  end
+  YAML.load_file(credentials_path)
+end
+
 def render_markdown(text)
   markdown = Redcarpet::Markdown.new(Redcarpet::Render::HTML)
   markdown.render(text)
@@ -34,12 +43,15 @@ def load_file_content(path)
   end
 end
 
-def valid_login?(username, password)
-  u_name, p_word = [username, password].map do |input|
-    input.downcase.strip
+def require_signed_in_user
+  unless user_logged_in?
+    session[:message] = "You must be signed in to do that."
+    redirect '/'
   end
+end
 
-  u_name == "admin" && p_word == "secret"
+def user_logged_in?
+  session[:logged_in]
 end
 
 # index page lists all files
@@ -53,11 +65,15 @@ end
 
 # Display form for adding a new file
 get '/new' do
+  require_signed_in_user
+
   erb :new
 end
 
 # creates a new file
 post '/create' do
+  require_signed_in_user
+
   filename = params[:filename].to_s
 
   if filename.size.zero?
@@ -81,10 +97,11 @@ end
 
 # signs the user in
 post '/users/login' do
+  credentials = load_users_credentials
   username = params[:username]
   password = params[:password]
 
-  if valid_login?(username, password)
+  if credentials.key?(username) && credentials[username] == params[:password]
     session[:logged_in] = true
     session[:username] = username
     session[:message] = 'Welcome!'
@@ -118,8 +135,9 @@ end
 
 # display the edit page for a file
 get '/:filename/edit' do
-  file_path = File.join(data_path, params[:filename])
+  require_signed_in_user
 
+  file_path = File.join(data_path, params[:filename])
   @file_name = params[:filename]
   @file_contents = File.read(file_path)
 
@@ -128,6 +146,8 @@ end
 
 # Update the selected file
 post '/:filename' do
+  require_signed_in_user
+
   file_name = params[:filename]
   file_path = File.join(data_path, file_name)
 
@@ -139,6 +159,8 @@ end
 
 # Deletes a file
 post '/:filename/delete' do
+  require_signed_in_user
+
   file_name = params[:filename]
   file_path = File.join(data_path, file_name)
 

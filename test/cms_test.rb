@@ -7,6 +7,8 @@ require 'rack/test'
 require 'minitest/reporters'
 Minitest::Reporters.use!
 require 'fileutils'
+require 'simplecov'
+SimpleCov.start
 
 require 'pry'
 
@@ -35,6 +37,10 @@ class CMSTest < Minitest::Test
     File.open(File.join(data_path, name), 'w') do |file|
       file.write(content)
     end
+  end
+
+  def admin_session
+    { "rack.session" => { username: "admin", logged_in: true } }
   end
 
   def test_index
@@ -83,7 +89,8 @@ class CMSTest < Minitest::Test
 
   def test_editing_document
     create_document('history.txt', '1993 - Yukihiro Matsumoto dreams up Ruby.')
-    get '/history.txt/edit'
+    
+    get '/history.txt/edit', {}, admin_session
 
     assert_equal(200, last_response.status)
     assert_includes(last_response.body, '<textarea')
@@ -93,7 +100,7 @@ class CMSTest < Minitest::Test
   def test_updating_document
     create_document('changes.txt', 'Nam augue quam, feugiat id suscipit quis, ')
 
-    get '/changes.txt'
+    get '/changes.txt', {}, admin_session
     assert_includes(last_response.body, 'Nam augue quam,')
 
     post '/changes.txt', content: 'New content'
@@ -106,7 +113,7 @@ class CMSTest < Minitest::Test
   end
 
   def test_view_new_document_form
-    get '/new'
+    get '/new', {}, admin_session
 
     assert_equal(200, last_response.status)
     assert_includes(last_response.body, 'new document')
@@ -114,7 +121,7 @@ class CMSTest < Minitest::Test
   end
 
   def test_create_new_document
-    post '/create', filename: 'test.txt'
+    post '/create', {filename: 'test.txt'}, admin_session
     assert_equal(302, last_response.status)
     assert_equal("test.txt has been created.", session[:message])
 
@@ -123,7 +130,7 @@ class CMSTest < Minitest::Test
   end
 
   def test_create_new_document_without_filename
-    post '/create', filename: ''
+    post '/create', { filename: '' }, admin_session
     assert_equal(422, last_response.status)
     assert_includes(last_response.body, 'A name is required')
   end
@@ -131,7 +138,7 @@ class CMSTest < Minitest::Test
   def test_delete_document
     create_document('deletable.md', 'I hope this works!')
 
-    post '/deletable.md/delete'
+    post '/deletable.md/delete', {}, admin_session
     assert_equal(302, last_response.status)
     assert_includes('deletable.md has been deleted.', session[:message])
 
@@ -149,7 +156,7 @@ class CMSTest < Minitest::Test
   end
 
   def test_login_success
-    post '/users/login', username: "admin", password: "secret"
+    post '/users/login', username: "admin" , password: "secret"
     assert_equal(302, last_response.status)
     assert_equal('Welcome!', session[:message])
 
