@@ -27,6 +27,10 @@ class CMSTest < Minitest::Test
     FileUtils.rm_rf(data_path)
   end
 
+  def session
+    last_request.env["rack.session"]
+  end
+
   def create_document(name, content = '')
     File.open(File.join(data_path, name), 'w') do |file|
       file.write(content)
@@ -71,14 +75,10 @@ class CMSTest < Minitest::Test
     get '/something.txt'
 
     assert_equal(302, last_response.status)
+    assert_includes('something.txt does not exist.', session[:message])
 
     get last_response['Location']
-
     assert_equal(200, last_response.status)
-    assert_includes(last_response.body, 'something.txt does not exist.')
-
-    get '/'
-    refute_includes(last_response.body, 'something.txt does not exist.')
   end
 
   def test_editing_document
@@ -96,10 +96,13 @@ class CMSTest < Minitest::Test
     get '/changes.txt'
     assert_includes(last_response.body, 'Nam augue quam,')
 
-    post '/changes.txt', content: 'No longer contains changes'
+    post '/changes.txt', content: 'New content'
 
     assert_equal(302, last_response.status)
-    refute_includes(last_response.body, 'Nam augue quam,')
+    assert_equal('changes.txt has been updated.', session[:message])
+
+    get '/changes.txt'
+    assert_includes(last_response.body, "New content")
   end
 
   def test_view_new_document_form
@@ -113,9 +116,7 @@ class CMSTest < Minitest::Test
   def test_create_new_document
     post '/create', filename: 'test.txt'
     assert_equal(302, last_response.status)
-
-    get last_response['Location']
-    assert_includes(last_response.body, 'test.txt was created')
+    assert_equal("test.txt has been created.", session[:message])
 
     get '/'
     assert_includes(last_response.body, 'test.txt')
@@ -130,15 +131,50 @@ class CMSTest < Minitest::Test
   def test_delete_document
     create_document('deletable.md', 'I hope this works!')
 
-    post '/:filename/destroy'
-    binding.pry
+    post '/deletable.md/delete'
     assert_equal(302, last_response.status)
-
-    get last_response['Location']
-    assert_includes(last_response.body, 'deletable.md has been deleted')
+    assert_includes('deletable.md has been deleted.', session[:message])
 
     get '/'
     assert_equal(200, last_response.status)
-    refute_includes(last_response.body, 'deletable.md')
+    refute_includes(last_response.body, %q(href="/test.txt"))
+  end
+
+  def test_view_login_form
+    get '/users/login'
+
+    assert_equal(200, last_response.status)
+    assert_includes(last_response.body, 'Username:')
+    assert_includes(last_response.body, 'Password:')
+  end
+
+  def test_login_success
+    post '/users/login', username: "admin", password: "secret"
+    assert_equal(302, last_response.status)
+    assert_equal('Welcome!', session[:message])
+
+    get last_response['Location']
+    assert_includes(last_response.body, "Signed in as admin.")
+  end
+
+  def test_login_fail
+    post '/users/login', username: "chris", password: "12345"
+    assert_equal(200, last_response.status)
+    refute_equal('chris', session[:username])
+    assert_includes(last_response.body, "Invalid Credentials")
+  end
+
+  def test_logout
+    post '/users/login', username: "admin", password: "secret"
+    assert_equal(302, last_response.status)
+
+    post '/users/logout'
+    assert_equal(302, last_response.status)
+    assert_equal('You have been signed out.', session[:message])
+
+    get last_response['Location']
+    assert_equal(200, last_response.status)
+    refute_equal('admin', session[:username])
+    assert_includes(last_response.body, "Sign In")
   end
 end

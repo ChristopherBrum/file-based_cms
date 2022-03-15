@@ -1,7 +1,7 @@
 <ul>
   <% @files.each do |file| %>
     <li>
-      <a href="/<%= file %>" ><%= file %></a>
+      <a href="/<%= file %>"><%= file %></a>
       <a href="/<%= file %>/edit">edit</a>
       <form class="inline" method="post" action="/<%= file %>/delete">
         <button type="submit">delete</button>
@@ -11,3 +11,14 @@
 </ul>
 
 <p><a href="/new">New Document</a></p>
+
+<% if session[:logged_in] %>
+  <form method="post" action="/users/logout">
+    <p class="user-status">Signed in as admin.</p>
+    <button type="submit">Sign Out</button>
+  </form>
+<% else %>
+  <form method="get" action="/users/login">
+    <button type="submit">Sign In</button>
+  </form>
+<% end %>

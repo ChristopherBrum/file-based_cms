@@ -12,9 +12,9 @@ end
 
 def data_path
   if ENV['RACK_ENV'] == 'test'
-    File.expand_path('test/data', __dir__)
+    File.expand_path('../test/data', __FILE__)
   else
-    File.expand_path('data', __dir__)
+    File.expand_path('../data', __FILE__)
   end
 end
 
@@ -32,6 +32,14 @@ def load_file_content(path)
   when '.md'
     erb render_markdown(content)
   end
+end
+
+def valid_login?(username, password)
+  u_name, p_word = [username, password].map do |input|
+    input.downcase.strip
+  end
+
+  u_name == "admin" && p_word == "secret"
 end
 
 # index page lists all files
@@ -60,21 +68,50 @@ post '/create' do
     file_path = File.join(data_path, filename)
 
     File.write(file_path, '')
+    session[:message] = "#{params[:filename]} has been created."
 
-    session[:message] = "#{params[:filename]} was created."
     redirect '/'
   end
+end
+
+# display the sign in page
+get "/users/login" do
+  erb :login
+end
+
+# signs the user in
+post '/users/login' do
+  username = params[:username]
+  password = params[:password]
+
+  if valid_login?(username, password)
+    session[:logged_in] = true
+    session[:username] = username
+    session[:message] = 'Welcome!'
+    redirect '/'
+  else
+    session[:message] = 'Invalid Credentials.'
+    erb :login
+  end
+end
+
+# Signs out the user
+post '/users/logout' do
+  session[:logged_in] = false
+  session[:username] = nil
+  session[:message] = 'You have been signed out.'
+  redirect '/'
 end
 
 # displays selected file
 get '/:filename' do
   file_path = File.join(data_path, params[:filename])
-  @file_name = params[:filename]
+  file_name = params[:filename]
 
   if File.exist?(file_path)
     load_file_content(file_path)
   else
-    session[:message] = "#{@file_name} does not exist."
+    session[:message] = "#{file_name} does not exist."
     redirect '/'
   end
 end
@@ -102,10 +139,10 @@ end
 
 # Deletes a file
 post '/:filename/delete' do
-  file_name = params[:filename].to_s
+  file_name = params[:filename]
   file_path = File.join(data_path, file_name)
 
-  File.delete(file_name)
+  File.delete(file_path)
 
   session[:message] = "#{file_name} has been deleted."
   redirect '/'
